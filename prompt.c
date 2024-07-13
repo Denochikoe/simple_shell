@@ -7,7 +7,8 @@
 #include <errno.h>
 
 #define PROMPT "simple_shell$ "
-
+void print_error(const char *msg);
+void shell_exit(void);
 /**
  * print_error - Prints an error message
  * @msg: The error message to print
