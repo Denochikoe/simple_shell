@@ -48,7 +48,7 @@ void free_env(char **env);
 
 ssize_t _puts(char *str);
 char *_strdup(char *strodup);
-int _strcmpr(char *strcmp1,char *strcmp2);
+int _strcmpr(char *strcmp1, char *strcmp2);
 char *_strcat(char *strc1, char *strc2);
 unsigned int _strlen(char *str);
 

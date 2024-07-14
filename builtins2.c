@@ -106,7 +106,7 @@ int _atoi(char *str)
 		num *= 10;
 		if (str[i] < '0' || str[i] > '9')
 			return (-1);
-		if ((i == digits -1) && (str[i] - '0' > INT_MAX % 10))
+		if ((i == digits - 1) && (str[i] - '0' > INT_MAX % 10))
 			return (-1);
 		num += str[i] - '0';
 		if ((i == digits - 2) && (str[i + 1] != '\0') && (num > INT_MAX / 10))
