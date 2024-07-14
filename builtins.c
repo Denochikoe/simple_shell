@@ -19,9 +19,7 @@ void (*check_for_builtins(vars_t *vars))(vars_t *vars)
 	for (i = 0; check[i].f != NULL; i++)
 	{
 		if (_strcmpr(vars->av[0], check[i].name) == 0)
-		{
 				break;
-		}
 	}
 	if (check[i].f != NULL)
 		check[i].f(vars);
