@@ -74,7 +74,7 @@ void check_for_path(vars_t *vars)
 {
 	char *path, *path_dup = NULL, *check = NULL;
 	unsigned int i = 0, r = 0;
-	char **path_tokens;
+	char **path_tokens = NULL;
 	struct stat buf;
 
 	if (check_for_dir(vars->av[0]))
@@ -85,31 +85,53 @@ void check_for_path(vars_t *vars)
 		if (path != NULL)
 		{
 			path_dup = _strdup(path + 5);
+			if (path_dup == NULL)
+			{
+				print_error(vars, "Memory allocation failed\n");
+				vars->status = 1;
+				new_exit(vars);
+			}
 			path_tokens = tokenize(path_dup, ":");
-			for (i = 0; path_tokens && path_tokens[i]; i++, free(check))
+			if (path_tokens == NULL)
+			{
+				print_error(vars, "Tokenization failed\n");
+				vars->status = 1;
+				new_exit(vars);
+			}
+			for (i = 0; path_tokens && path_tokens[i]; i++)
 			{
 				check = _strcat(path_tokens[i], vars->av[0]);
+				if (check == NULL)
+				{
+					print_error(vars, "Memory allocation failed\n");
+					vars->status = 1;
+					new_exit(vars);
+				}
 				if (stat(check, &buf) == 0)
 				{
 					r = path_execute(check, vars);
 					free(check);
 					break;
 				}
+				free(check);
+				check = NULL;
 			}
 			free(path_dup);
-			if (path_tokens == NULL)
+			path_dup = NULL;
+			if (path_tokens[i] == NULL)
 			{
+				print_error(vars, ": not found\n");
 				vars->status = 127;
-				new_exit(vars);
 			}
 		}
-		if (path == NULL || path_tokens[i] == NULL)
+		else 
 		{
 			print_error(vars, ": not found\n");
 			vars->status = 127;
 		}
-		free(path_tokens);
 	}
+	free_tokens(path_tokens);
+	path_tokens = NULL;
 	if (r == 1)
 		new_exit(vars);
 }
