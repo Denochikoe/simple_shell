@@ -43,6 +43,8 @@ void _cd(vars_t *vars)
 		oldpwd = getenv("OLDPWD");
 		if (oldpwd == NULL)
 		{
+			_puts(getenv("PWD"));
+			_puts("\n");
 			print_error(vars, ": OLDPWD not set\n");
 			vars->status = 1;
 			return;
