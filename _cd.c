@@ -23,17 +23,20 @@ void update_pwd(void)
  */
 void _cd(vars_t *vars)
 {
-	char *dir, *home;
-	char *oldpwd;
-	struct stat st;
+	char *dir, *oldpwd, *home;
+	char cwd[1024];
 
 	if (vars->av[1] == NULL)
 	{
 		home = getenv("HOME");
 		if (home == NULL)
 		{
-			print_error(vars, ": HOME not set\n");
-			vars->status = 1;
+			if (getcwd(cwd, sizeof(cwd)) != NULL)
+			{
+				_puts(cwd);
+				_puts("\n");
+			}
+			vars->status = 0;
 			return;
 		}
 		dir = home;
@@ -43,33 +46,47 @@ void _cd(vars_t *vars)
 		oldpwd = getenv("OLDPWD");
 		if (oldpwd == NULL)
 		{
-			_puts(getenv("PWD"));
-			_puts("\n");
+			if (getcwd(cwd, sizeof(cwd)) != NULL)
+			{
+				_puts(cwd);
+				_puts("\n");
+			}
 			print_error(vars, ": OLDPWD not set\n");
 			vars->status = 1;
 			return;
 		}
 		dir = oldpwd;
-		_puts(dir);
-		_puts("\n");
 	}
 	else
 	{
 		dir = vars->av[1];
 	}
-	if (stat(dir, &st) != 0)
+	oldpwd = getenv("PWD");
+	if (oldpwd != NULL)
 	{
-		print_error(vars, ": No such file or directory\n");
+		if (setenv("OLDPWD", oldpwd, 1) == -1)
+		{
+			print_error(vars, ": failed to set OLDPWD\n");
+			vars->status = 1;
+			return;
+		}
+	}
+	if (chdir(dir) == -1)
+	{
+		print_error(vars, ": can't cd to ");
+		_puts(dir);
+		_puts("\n");
 		vars->status = 1;
 		return;
 	}
-	if (chdir(dir) != 0)
+	if (getcwd(cwd, sizeof(cwd)) != NULL)
 	{
-		perror("cd");
-		vars->status = 1;
-		return;
+		if (setenv("PWD", cwd, 1) == -1)
+		{
+			print_error(vars, ": failed to set PWD\n");
+			vars->status = 1;
+			return;
+		}
 	}
-	setenv("OLDPWD", getenv("PWD"), 1);
-	setenv("PWD", dir, 1);
 	vars->status = 0;
 }
