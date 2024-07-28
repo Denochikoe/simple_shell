@@ -76,5 +76,7 @@ int check_for_dir(char *str);
 void print_error(vars_t *vars, char *msg);
 void _puts2(char *str);
 char *_uitoa(unsigned int count);
+void _cd(vars_t *vars);
+void update_pwd(void);
 
 #endif /*_SHELL_H_ */

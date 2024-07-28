@@ -13,6 +13,7 @@ void (*check_for_builtins(vars_t *vars))(vars_t *vars)
 		{"env", _env},
 		{"setenv", new_setenv},
 		{"unsetenv", new_unsetenv},
+		{"cd", _cd},
 		{NULL, NULL}
 	};
 
