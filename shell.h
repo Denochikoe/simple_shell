@@ -43,6 +43,28 @@ typedef struct builtins
 	void (*f)(vars_t *);
 } builtins_t;
 
+/**
+ * struct alias_node - Node of a linked list of aliases
+ * @name: The alias name
+ * @value: The alias value
+ * @next: Pointer to the next node
+ */
+typedef struct alias_node
+{
+	char *name;
+	char *value;
+	struct alias_node *next;
+} alias_node_t;
+
+/**
+ * struct alias_list - Linked list of aliases
+ * @head: Pointer to the head of the list
+ */
+typedef struct
+{
+	alias_node_t *head;
+} alias_list_t;
+
 char **make_env(char **env);
 void free_env(char **env);
 
@@ -78,5 +100,10 @@ void _puts2(char *str);
 char *_uitoa(unsigned int count);
 void _cd(vars_t *vars);
 void update_pwd(void);
+
+void add_alias(alias_list_t *alias_list, const char *name, const char *value);
+void print_aliases(const alias_list_t *alias_list);
+char *find_alias(const alias_list_t *alias_list, const char *name);
+void handle_alias_command(alias_list_t *alias_list, vars_t *vars);
 
 #endif /*_SHELL_H_ */
