@@ -32,6 +32,12 @@ int main(int argc __attribute__((unused)), char **argv, char **environment)
 	size_t len_buffer = 0;
 	unsigned int is_pipe = 0, i;
 	vars_t vars = {NULL, NULL, NULL, 0, NULL, 0, NULL};
+	alias_node_t *current;
+	alias_node_t *next;
+	int j;
+	char *alias_value;
+	alias_list_t alias_list = {NULL};
+	
 
 	vars.argv = argv;
 	vars.env = make_env(environment);
@@ -50,8 +56,28 @@ int main(int argc __attribute__((unused)), char **argv, char **environment)
 		{
 			vars.av = tokenize(vars.commands[i], "\n \t\r");
 			if (vars.av && vars.av[0])
-				if (check_for_builtins(&vars) == NULL)
-					check_for_path(&vars);
+			{
+				if (strcmp(vars.av[0], "alias") == 0)
+				{
+					handle_alias_command(&alias_list, &vars);
+				}
+				else
+				{
+					for (j = 0; vars.av[j]; j++)
+					{
+						alias_value = find_alias(&alias_list, vars.av[j]);
+						if (alias_value)
+						{
+							free(vars.av[j]);
+							vars.av[j] = strdup(alias_value);
+						}
+					}
+					if (check_for_builtins(&vars) == NULL)
+					{
+						check_for_path(&vars);
+					}
+				}
+			}
 			free(vars.av);
 		}
 		free(vars.buffer);
@@ -63,6 +89,15 @@ int main(int argc __attribute__((unused)), char **argv, char **environment)
 	}
 	if (is_pipe == 0)
 		_puts("\n");
+	current = alias_list.head;
+	while (current)
+	{
+		next = current->next;
+		free(current->name);
+		free(current->value);
+		free(current);
+		current = next;
+	}
 	free_env(vars.env);
 	free(vars.buffer);
 	exit(vars.status);

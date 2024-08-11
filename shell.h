@@ -11,8 +11,36 @@
 #include <limits.h>
 #include <signal.h>
 
+/*
+ * struct alias_node_s - Node in the alias list.
+ * @name: The name of the alias.
+ * @value: The value associated with the alias.
+ * @next: Pointer to the next node in the list.
+ *
+ * Description: This structure represents a node in a singly
+ * linked list used for storing alias definitions.
+ */
+typedef struct alias_node
+{
+	char *name;
+	char *value;
+	struct alias_node *next;
+} alias_node_t;
+
 /**
- * struct variables - variables
+ * struct - A list of aliases.
+ * @head: Pointer to the first node in the alias list.
+ *
+ * Description: This structure represents a list of aliases,
+ * starting with the head node of a singly linked list.
+ */
+typedef struct
+{
+	alias_node_t *head;
+} alias_list_t;
+
+/**
+ * struct vars_s - variables used in the shell.
  * @av: command line arguments
  * @buffer: buffer of command
  * @env: environment variables
@@ -20,8 +48,12 @@
  * @argv: arguments at opening of shell
  * @status: exit status
  * @commands: commands to execute
+ * @alias_list: Pointer to the alias list.
+ *
+ * Description: This structure holds various variables and
+ * data used throught the shell's execution.
  */
-typedef struct variables
+typedef struct vars_s
 {
 	char **av;
 	char *buffer;
@@ -71,12 +103,17 @@ void check_for_path(vars_t *vars);
 int path_execute(char *command, vars_t *vars);
 char *find_path(char **env);
 int execute_cwd(vars_t *vars);
-int check_for_dir(char *str);
+int is_absolute_path(char *str);
 
 void print_error(vars_t *vars, char *msg);
 void _puts2(char *str);
 char *_uitoa(unsigned int count);
 void _cd(vars_t *vars);
 void update_pwd(void);
+
+void add_alias(alias_list_t *alias_list, const char *name, const char *value);
+void print_aliases(const alias_list_t *alias_list);
+char *find_alias(const alias_list_t *alias_list, const char *name);
+void handle_alias_command(alias_list_t *alias_list, vars_t *vars);
 
 #endif /*_SHELL_H_ */
