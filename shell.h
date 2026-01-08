@@ -1,109 +1,135 @@
-#ifndef _SHELL_H_
-#define _SHELL_H_
+#ifndef SHELL_H
+#define SHELL_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+/* ===================== */
+/* Standard headers      */
+/* ===================== */
+#include <stddef.h>
+#include <limits.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <limits.h>
-#include <signal.h>
 
-/**
- * struct variables - variables
- * @av: command line arguments
- * @buffer: buffer of command
- * @env: environment variables
- * @count: count of commands entered
- * @argv: arguments at opening of shell
- * @status: exit status
- * @commands: commands to execute
- */
-typedef struct variables
-{
-	char **av;
-	char *buffer;
-	char **env;
-	size_t count;
-	char **argv;
-	int status;
-	char **commands;
-} vars_t;
-
-/**
- * struct builtins - struct for the builtin functions
- * @name: name of builtin command
- * @f: function for corresponding builtin
- */
-typedef struct builtins
-{
-	char *name;
-	void (*f)(vars_t *);
-} builtins_t;
-
-/**
- * struct alias_node - Node of a linked list of aliases
- * @name: The alias name
- * @value: The alias value
- * @next: Pointer to the next node
- */
+/* ===================== */
+/* Alias structures      */
+/* ===================== */
 typedef struct alias_node
 {
-	char *name;
-	char *value;
-	struct alias_node *next;
+    char *name;
+    char *value;
+    struct alias_node *next;
 } alias_node_t;
 
-/**
- * struct alias_list - Linked list of aliases
- * @head: Pointer to the head of the list
- */
-typedef struct
+typedef struct alias_list
 {
-	alias_node_t *head;
+    alias_node_t *head;
 } alias_list_t;
 
+/* ===================== */
+/* Command chaining      */
+/* ===================== */
+typedef struct command_s
+{
+    char *cmd;
+    char op;
+} command_t;
+
+/* ===================== */
+/* Shell variables       */
+/* ===================== */
+typedef struct vars_s
+{
+    char **av;               /* tokenized arguments */
+    char *buffer;            /* raw input buffer */
+    char **env;              /* environment array */
+    unsigned int count;      /* command count */
+    char **argv;             /* argv from main */
+    int status;              /* last command exit status */
+    alias_list_t *alias_list;/* pointer to alias list */
+} vars_t;
+
+/* ===================== */
+/* Builtins table        */
+/* ===================== */
+typedef struct builtins_s
+{
+    char *name;
+    int (*func)(vars_t *);
+} builtins_t;
+
+/* ===================== */
+/* Builtin functions     */
+/* ===================== */
+int builtin_cd(vars_t *vars);
+int builtin_pwd(vars_t *vars);
+int builtin_echo(vars_t *vars);
+int builtin_env(vars_t *vars);
+int builtin_exit(vars_t *vars);
+int builtin_setenv(vars_t *vars);
+int builtin_unsetenv(vars_t *vars);
+int handle_alias_command(vars_t *vars);
+int check_for_builtins(vars_t *vars);
+
+/* ===================== */
+/* Alias helpers         */
+/* ===================== */
+void add_alias(alias_list_t *alias_list, const char *name, const char *value);
+char *find_alias(const alias_list_t *alias_list, const char *name);
+void print_aliases(const alias_list_t *alias_list);
+
+/* ===================== */
+/* Environment helpers   */
+/* ===================== */
 char **make_env(char **env);
 void free_env(char **env);
-
-ssize_t _puts(char *str);
-char *_strdup(char *strodup);
-int _strcmpr(char *strcmp1, char *strcmp2);
-char *_strcat(char *strc1, char *strc2);
-unsigned int _strlen(char *str);
-
-char **tokenize(char *buffer, char *delimiter);
-char **_realloc(char **ptr, size_t *size);
-char *new_strtok(char *str, const char *delim);
-
-void (*check_for_builtins(vars_t *vars))(vars_t *vars);
-void new_exit(vars_t *vars);
-void _env(vars_t *vars);
-void new_setenv(vars_t *vars);
-void new_unsetenv(vars_t *vars);
-
+char **find_key(char **env, const char *key);
+char *add_value(const char *key, const char *value);
 void add_key(vars_t *vars);
-char **find_key(char **env, char *key);
-char *add_value(char *key, char *value);
-int _atoi(char *str);
+
+/* ===================== */
+/* Execution             */
+/* ===================== */
+void execute_chained_commands(vars_t *vars, char *buffer);
+command_t *split_by_operators(char *buffer, int *count);
+void free_command_array(command_t *arr, int count);
 
 void check_for_path(vars_t *vars);
-int path_execute(char *command, vars_t *vars);
-char *find_path(char **env);
 int execute_cwd(vars_t *vars);
-int check_for_dir(char *str);
+int path_execute(const char *command, vars_t *vars); /* updated to const */
+char *find_path(char **env);
+int check_for_dir(const char *str);                 /* updated to const */
 
-void print_error(vars_t *vars, char *msg);
-void _puts2(char *str);
+/* ===================== */
+/* Tokenization          */
+/* ===================== */
+char **tokenize(char *buffer, const char *delimiter);
+char *new_strtok(char *str, const char *delim);
+void free_tokens(char **tokens);
+
+/* ===================== */
+/* Utilities             */
+/* ===================== */
+int _atoi(const char *str);
+unsigned int _strlen(const char *str);
+int _strcmpr(const char *s1, const char *s2);
+int _strcmpr_n(const char *s1, const char *s2, size_t n);
+char *_strdup(const char *str);
+char *_strcpy(char *dest, const char *src);
+char *_strcat(char *dest, const char *src);
+char **_realloc(char **ptr, size_t *size);
+
+/* ===================== */
+/* Output / errors       */
+/* ===================== */
+ssize_t _puts(const char *str);
+void _puts2(const char *str);
+void print_error(vars_t *vars, const char *msg);
+void error_cmd(const char *cmd);
 char *_uitoa(unsigned int count);
-void _cd(vars_t *vars);
-void update_pwd(void);
 
-void add_alias(alias_list_t *alias_list, const char *name, const char *value);
-void print_aliases(const alias_list_t *alias_list);
-char *find_alias(const alias_list_t *alias_list, const char *name);
-void handle_alias_command(alias_list_t *alias_list, vars_t *vars);
+#endif /* SHELL_H */
 
-#endif /*_SHELL_H_ */

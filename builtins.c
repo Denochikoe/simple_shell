@@ -1,161 +1,191 @@
 #include "shell.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <limits.h>
 
-/**
- * check_for_builtins - checks if the command is a builtin
- * @vars: variables
- * Return: pointer to the function or NULL
- */
-void (*check_for_builtins(vars_t *vars))(vars_t *vars)
+/* ===================== */
+/* Utility: safe atoi    */
+/* ===================== */
+int _atoi(const char *str)
 {
-	unsigned int i;
-	builtins_t check[] = {
-		{"exit", new_exit},
-		{"env", _env},
-		{"setenv", new_setenv},
-		{"unsetenv", new_unsetenv},
-		{"cd", _cd},
-		{NULL, NULL}
-	};
+    unsigned int i, res = 0;
 
-	for (i = 0; check[i].f != NULL; i++)
-	{
-		if (_strcmpr(vars->av[0], check[i].name) == 0)
-		{
-				break;
-		}
-	}
-	if (check[i].f != NULL)
-		check[i].f(vars);
-	return (check[i].f);
+    if (!str)
+        return -1;
+
+    for (i = 0; str[i]; i++)
+    {
+        if (str[i] < '0' || str[i] > '9')
+            return -1;
+        res = res * 10 + (str[i] - '0');
+    }
+    return res;
 }
 
-/**
- * new_exit - exit program
- * @vars: variables
- * Return: void
- */
-void new_exit(vars_t *vars)
+/* ===================== */
+/* Utility: KEY=VALUE    */
+/* ===================== */
+char *add_value(const char *key, const char *value)
 {
-	int status;
+    size_t len1 = _strlen(key);
+    size_t len2 = _strlen(value);
+    char *s = malloc(len1 + len2 + 2);
 
-	if (_strcmpr(vars->av[0], "exit") == 0 && vars->av[1] != NULL)
-	{
-		status = _atoi(vars->av[1]);
-		if (status == -1)
-		{
-			vars->status = 2;
-			print_error(vars, ": Illegal number: ");
-			_puts2(vars->av[1]);
-			_puts2("\n");
-			free(vars->commands);
-			vars->commands = NULL;
-			return;
-		}
-		vars->status = status;
-	}
-	free(vars->buffer);
-	free(vars->av);
-	free(vars->commands);
-	free_env(vars->env);
-	exit(vars->status);
+    if (!s)
+        return NULL;
+
+    _strcpy(s, key);
+    s[len1] = '=';
+    _strcpy(s + len1 + 1, value);
+
+    return s;
 }
 
-/**
- * _env - prints the currents environment
- * @vars: struct of variables
- * Return: void.
- */
-void _env(vars_t *vars)
+/* ===================== */
+/* Builtin: setenv core  */
+/* ===================== */
+void add_key(vars_t *vars)
 {
-	unsigned int i;
+    size_t i = 0;
+    char **newenv;
 
-	for (i = 0; vars->env[i]; i++)
-	{
-		_puts(vars->env[i]);
-		_puts("\n");
-	}
-	vars->status = 0;
+    if (!vars || !vars->av[1] || !vars->av[2])
+    {
+        print_error(vars, "Usage: setenv KEY VALUE\n");
+        vars->status = 1;
+        return;
+    }
+
+    while (vars->env[i])
+        i++;
+
+    newenv = malloc(sizeof(char *) * (i + 2));
+    if (!newenv)
+    {
+        vars->status = 127;
+        return;
+    }
+
+    for (size_t j = 0; j < i; j++)
+        newenv[j] = vars->env[j];
+
+    newenv[i] = add_value(vars->av[1], vars->av[2]);
+    newenv[i + 1] = NULL;
+
+    free(vars->env);
+    vars->env = newenv;
 }
 
-/**
- * new_setenv - create a new environment variable, or edit an
- * existing variable
- * @vars: pointer to struct of variables
- *
- * Return: void
- */
-void new_setenv(vars_t *vars)
+/* ===================== */
+/* Builtin dispatcher    */
+/* ===================== */
+int check_for_builtins(vars_t *vars)
 {
-	char **key;
-	char *var;
+    if (!vars || !vars->av || !vars->av[0])
+        return 0;
 
-	if (vars->av[1] == NULL || vars->av[2] == NULL)
-	{
-		print_error(vars, ": Incorrect number of arguments\n");
-		vars->status = 2;
-		return;
-	}
-	key = find_key(vars->env, vars->av[1]);
-	if (key == NULL)
-		add_key(vars);
-	else
-	{
-		var = add_value(vars->av[1], vars->av[2]);
-		if (var == NULL)
-		{
-			print_error(vars, NULL);
-			free(vars->buffer);
-			free(vars->commands);
-			free(vars->av);
-			free_env(vars->env);
-			exit(127);
-		}
-		free(*key);
-		*key = var;
-	}
-	vars->status = 0;
+    if (_strcmpr(vars->av[0], "alias") == 0)
+        return handle_alias_command(vars);
+    if (_strcmpr(vars->av[0], "exit") == 0)
+        return builtin_exit(vars);
+    if (_strcmpr(vars->av[0], "env") == 0)
+        return builtin_env(vars);
+    if (_strcmpr(vars->av[0], "setenv") == 0)
+        return builtin_setenv(vars);
+    if (_strcmpr(vars->av[0], "unsetenv") == 0)
+        return builtin_unsetenv(vars);
+    if (_strcmpr(vars->av[0], "cd") == 0)
+        return builtin_cd(vars);
+    if (_strcmpr(vars->av[0], "echo") == 0)
+        return builtin_echo(vars);
+    if (_strcmpr(vars->av[0], "pwd") == 0)
+        return builtin_pwd(vars);
+
+    return 0;
 }
 
-/**
- * new_unsetenv - remove an environment variable
- * @vars: pointer to a struct of variables
- *
- * Return: void
- */
-void new_unsetenv(vars_t *vars)
+/* ===================== */
+/* Individual builtins   */
+/* ===================== */
+
+int builtin_exit(vars_t *vars)
 {
-	char **key, **newenv;
+    unsigned int status = 0;
 
-	unsigned int i, j;
+    if (vars->av[1])
+        status = _atoi(vars->av[1]);
 
-	if (vars->av[1] == NULL)
-	{
-		print_error(vars, ": Incorrect number of arguments\n");
-		vars->status = 2;
-		return;
-	}
-	key = find_key(vars->env, vars->av[1]);
-	if (key == NULL)
-	{
-		print_error(vars, ": No variable to unset");
-		return;
-	}
-	for (i = 0; vars->env[i] != NULL; i++)
-		;
-	newenv = malloc(sizeof(char *) * i);
-	if (newenv == NULL)
-	{
-		print_error(vars, NULL);
-		vars->status = 127;
-		new_exit(vars);
-	}
-	for (i = 0; vars->env[i] != *key; i++)
-		newenv[i] = vars->env[i];
-	for (j = i + 1; vars->env[j] != NULL; j++, i++)
-		newenv[i] = vars->env[j];
-	newenv[i] = NULL;
-	free(*key);
-	free(vars->env);
-	vars->env = newenv;
-	vars->status = 0;
+    free_env(vars->env);
+    free(vars->buffer);
+    exit(status);
 }
+
+int builtin_env(vars_t *vars)
+{
+    for (size_t i = 0; vars->env[i]; i++)
+    {
+        _puts(vars->env[i]);
+        _puts("\n");
+    }
+    return 1;
+}
+
+int builtin_setenv(vars_t *vars)
+{
+    add_key(vars);
+    return 1;
+}
+
+int builtin_unsetenv(vars_t *vars)
+{
+    char **newenv = NULL;
+    size_t i, j = 0;
+
+    if (!vars->av[1])
+        return 1;
+
+    for (i = 0; vars->env[i]; i++)
+    {
+        if (_strcmpr_n(vars->env[i], vars->av[1],
+                       _strlen(vars->av[1])) != 0)
+        {
+            newenv = _realloc(newenv, &j);
+            newenv[j++] = _strdup(vars->env[i]);
+        }
+    }
+
+    newenv = _realloc(newenv, &j);
+    newenv[j] = NULL;
+
+    free_env(vars->env);
+    vars->env = newenv;
+    return 1;
+}
+
+int builtin_echo(vars_t *vars)
+{
+    for (size_t i = 1; vars->av[i]; i++)
+    {
+        _puts(vars->av[i]);
+        if (vars->av[i + 1])
+            _puts(" ");
+    }
+    _puts("\n");
+    return 1;
+}
+
+int builtin_pwd(vars_t *vars)
+{
+    char cwd[PATH_MAX];
+    (void)vars;
+
+    if (getcwd(cwd, sizeof(cwd)))
+    {
+        _puts(cwd);
+        _puts("\n");
+    }
+    return 1;
+}
+

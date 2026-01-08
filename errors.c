@@ -1,75 +1,81 @@
 #include "shell.h"
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /**
- * print_error - prints error messages to standard error
- * @vars: pointer to struct of variables
- * @msg: message to print
- *
- * Return: void
+ * _puts2 - print string to stderr
  */
-void print_error(vars_t *vars, char *msg)
+void _puts2(const char *str)
 {
-	char *count;
+    ssize_t len;
 
-	_puts2(vars->argv[0]);
-	_puts2(": ");
-	count = _uitoa(vars->count);
-	_puts2(count);
-	free(count);
-	_puts2(": ");
-	_puts2(vars->av[0]);
-	if (msg)
-	{
-		_puts2(msg);
-	}
-	else
-		perror("");
+    if (!str)
+        return;
+
+    len = _strlen(str);
+    if (write(STDERR_FILENO, str, len) != len)
+    {
+        perror("write");
+        exit(1);
+    }
 }
 
 /**
- * _puts2 - prints a string to standard error
- * @str: string to print
- *
- * Return: void
+ * _uitoa - unsigned int to string
  */
-void _puts2(char *str)
+char *_uitoa(unsigned int n)
 {
-	ssize_t num, len;
+    char buffer[20];
+    int i = 18;
 
-	num = _strlen(str);
-	len = write(STDERR_FILENO, str, num);
-	if (len != num)
-	{
-		perror("Fatal Error");
-		exit(1);
-	}
+    buffer[19] = '\0';
+
+    if (n == 0)
+        buffer[i--] = '0';
+
+    while (n > 0)
+    {
+        buffer[i--] = (n % 10) + '0';
+        n /= 10;
+    }
+
+    return _strdup(&buffer[i + 1]);
 }
 
 /**
- * _uitoa - converts an unsigned int to a string
- * @count: unsigned int to convert
- *
- * Return: pointer to the converted string
+ * print_error - formatted shell error
  */
-char *_uitoa(unsigned int count)
+void print_error(vars_t *vars, const char *msg)
 {
-	char *numstr;
-	unsigned int tmp, digits;
+    char *count;
 
-	tmp = count;
-	for (digits = 0; tmp != 0; digits++)
-		tmp /= 10;
-	numstr = malloc(sizeof(char) * (digits + 1));
-	if (numstr == NULL)
-	{
-		perror("Fatal Error1");
-		exit(127);
-	}
-	numstr[digits] = '\0';
-	for (--digits; count; --digits)
-	{
-		numstr[digits] = (count % 10) + '0';
-		count /= 10;
-	}
-	return (numstr);
+    if (!vars || !vars->av || !vars->av[0])
+        return;
+
+    _puts2(vars->argv[0]);
+    _puts2(": ");
+
+    count = _uitoa(vars->count);
+    if (count)
+    {
+        _puts2(count);
+        free(count);
+    }
+
+    _puts2(": ");
+    _puts2(vars->av[0]);
+
+    if (msg)
+        _puts2(msg);
 }
+
+/**
+ * error_cmd - command not found (path.c)
+ */
+void error_cmd(const char *cmd)
+{
+    _puts2(cmd);
+    _puts2(": not found\n");
+}
+
